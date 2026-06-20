@@ -25,7 +25,7 @@ public class PlayerController : MonoBehaviour
     private Vector3 startScale;
     void Start()
     {
-
+        HistoricalUnitVisual.Attach(gameObject, HistoricalUnitVisual.Faction.Roman);
         health = maxHealth;
         startScale = transform.localScale;
     }

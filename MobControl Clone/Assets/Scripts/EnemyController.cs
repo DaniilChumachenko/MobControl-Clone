@@ -5,7 +5,10 @@ using UnityEngine.SceneManagement;
 
 public class EnemyController : MonoBehaviour
 {
+    private static readonly List<EnemyController> activeEnemies = new List<EnemyController>();
+
     [SerializeField] private ParticleSystem enemyParticular;
+    private Collider unitCollider;
 
 
     [Header("Health Controller")]
@@ -24,8 +27,62 @@ public class EnemyController : MonoBehaviour
 
     [SerializeField] bool isBig;
     private Vector3 startScale;
+
+    private void Awake()
+    {
+        unitCollider = GetComponent<Collider>();
+    }
+
+    private void OnEnable()
+    {
+        if (!activeEnemies.Contains(this))
+        {
+            activeEnemies.Add(this);
+        }
+    }
+
+    private void OnDisable()
+    {
+        activeEnemies.Remove(this);
+    }
+
+    public static bool IsWithinSurfaceDistance(Collider sourceCollider, float maxDistance)
+    {
+        if (sourceCollider == null)
+        {
+            return false;
+        }
+
+        Vector3 sourceCenter = sourceCollider.bounds.center;
+        float maxDistanceSquared = maxDistance * maxDistance;
+
+        for (int i = activeEnemies.Count - 1; i >= 0; i--)
+        {
+            EnemyController enemy = activeEnemies[i];
+            if (enemy == null)
+            {
+                activeEnemies.RemoveAt(i);
+                continue;
+            }
+            if (!enemy.isActiveAndEnabled || enemy.unitCollider == null)
+            {
+                continue;
+            }
+
+            Vector3 enemySurface = enemy.unitCollider.ClosestPoint(sourceCenter);
+            Vector3 playerSurface = sourceCollider.ClosestPoint(enemySurface);
+            if ((enemySurface - playerSurface).sqrMagnitude <= maxDistanceSquared)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     void Start()
     {
+        HistoricalUnitVisual.Attach(gameObject, HistoricalUnitVisual.Faction.Barbarian);
         health = maxHealth;
         target = GameObject.FindGameObjectWithTag("PlayerCastle").transform;
         target.position -= new Vector3(0, target.position.y, 0);
