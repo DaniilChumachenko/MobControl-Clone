@@ -4,6 +4,8 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 public class PlayerController : MonoBehaviour
 {
+    private static readonly List<PlayerController> activePlayers = new List<PlayerController>();
+    private Collider unitCollider;
 
 
     [Header("Health Controller")]
@@ -23,6 +25,72 @@ public class PlayerController : MonoBehaviour
 
     [SerializeField] bool isBig;
     private Vector3 startScale;
+
+    private void Awake()
+    {
+        unitCollider = GetComponent<Collider>();
+    }
+
+    private void OnEnable()
+    {
+        if (!activePlayers.Contains(this))
+        {
+            activePlayers.Add(this);
+        }
+    }
+
+    private void OnDisable()
+    {
+        activePlayers.Remove(this);
+    }
+
+    public static bool TryGetClosestWithinSurfaceDistance(
+        Collider sourceCollider,
+        float maxDistance,
+        out Vector3 direction)
+    {
+        direction = Vector3.forward;
+        if (sourceCollider == null)
+        {
+            return false;
+        }
+
+        Vector3 sourceCenter = sourceCollider.bounds.center;
+        float closestDistanceSquared = maxDistance * maxDistance;
+        bool playerFound = false;
+
+        for (int i = activePlayers.Count - 1; i >= 0; i--)
+        {
+            PlayerController player = activePlayers[i];
+            if (player == null)
+            {
+                activePlayers.RemoveAt(i);
+                continue;
+            }
+            if (!player.isActiveAndEnabled || player.unitCollider == null)
+            {
+                continue;
+            }
+
+            Vector3 playerSurface = player.unitCollider.ClosestPoint(sourceCenter);
+            Vector3 sourceSurface = sourceCollider.ClosestPoint(playerSurface);
+            float surfaceDistanceSquared = (playerSurface - sourceSurface).sqrMagnitude;
+            if (surfaceDistanceSquared <= closestDistanceSquared)
+            {
+                Vector3 playerDirection = player.transform.position - sourceCollider.transform.position;
+                playerDirection.y = 0f;
+                if (playerDirection.sqrMagnitude > 0.0001f)
+                {
+                    direction = playerDirection.normalized;
+                }
+                closestDistanceSquared = surfaceDistanceSquared;
+                playerFound = true;
+            }
+        }
+
+        return playerFound;
+    }
+
     void Start()
     {
         HistoricalUnitVisual.Attach(gameObject, HistoricalUnitVisual.Faction.Roman);

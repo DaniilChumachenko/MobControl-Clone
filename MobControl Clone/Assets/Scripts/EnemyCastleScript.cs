@@ -15,7 +15,10 @@ public class EnemyCastleScript : MonoBehaviour
 
     [Header("Spawn:Time-EnemyAmount-BigEnemyAmount")]
     [SerializeField] Vector3[] spawnEvents;
+    [SerializeField, Min(0.05f)] private float timeBetweenEnemySpawns = 0.4f;
     private float spawnTimer;
+    private readonly Queue<GameObject> pendingEnemies = new Queue<GameObject>();
+    private Coroutine spawnCoroutine;
 
 
 
@@ -34,36 +37,48 @@ public class EnemyCastleScript : MonoBehaviour
         {
             if (spawnEvents[i].x == (int)spawnTimer)
             {
-                spawn((int)spawnEvents[i].y, (int)spawnEvents[i].z);
+                QueueSpawn((int)spawnEvents[i].y, (int)spawnEvents[i].z);
                 spawnEvents[i].x = 0;
             }
         }
         health_text.text = health.ToString();
     }
-    private void spawn(int EnemyAmount, int bigEnemyAmount)
+    private void QueueSpawn(int enemyAmount, int bigEnemyAmount)
     {
-        for (int i = 0; i < EnemyAmount; i++)
+        for (int i = 0; i < enemyAmount; i++)
         {
-            Vector3 newSpawnPoint = spawnPoint.position;
-            int spawnX = Random.Range(-2, 2);
-            int spawnZ = Random.Range(-3, 3);
-
-            newSpawnPoint.z += spawnZ;
-            newSpawnPoint.x += spawnX;
-            GameObject enemySpawned = Instantiate(enemy, newSpawnPoint, Quaternion.identity);
-            enemySpawned.transform.rotation = Quaternion.Euler(0, 180, 0);
+            pendingEnemies.Enqueue(enemy);
         }
-        for (int y = 0; y < bigEnemyAmount; y++)
+        for (int i = 0; i < bigEnemyAmount; i++)
         {
-            Vector3 newSpawnPoint = spawnPoint.position;
-            int spawnX = Random.Range(-2, 2);
-            int spawnZ = Random.Range(-3, 3);
-
-            newSpawnPoint.z += spawnZ;
-            newSpawnPoint.x += spawnX;
-            GameObject enemySpawned = Instantiate(bigEnemy, newSpawnPoint, Quaternion.identity);
-            enemySpawned.transform.rotation = Quaternion.Euler(0, 180, 0);
+            pendingEnemies.Enqueue(bigEnemy);
         }
+
+        if (spawnCoroutine == null)
+        {
+            spawnCoroutine = StartCoroutine(SpawnEnemiesOneByOne());
+        }
+    }
+
+    private IEnumerator SpawnEnemiesOneByOne()
+    {
+        while (pendingEnemies.Count > 0)
+        {
+            SpawnEnemy(pendingEnemies.Dequeue());
+            yield return new WaitForSeconds(timeBetweenEnemySpawns);
+        }
+
+        spawnCoroutine = null;
+    }
+
+    private void SpawnEnemy(GameObject enemyPrefab)
+    {
+        Vector3 newSpawnPoint = spawnPoint.position;
+        newSpawnPoint.x += Random.Range(-2, 2);
+        newSpawnPoint.z += Random.Range(-3, 3);
+
+        GameObject enemySpawned = Instantiate(enemyPrefab, newSpawnPoint, Quaternion.identity);
+        enemySpawned.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
     }
     public void getHit(int damage)
     {

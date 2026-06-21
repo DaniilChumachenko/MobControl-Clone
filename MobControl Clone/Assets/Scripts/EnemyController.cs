@@ -46,8 +46,12 @@ public class EnemyController : MonoBehaviour
         activeEnemies.Remove(this);
     }
 
-    public static bool IsWithinSurfaceDistance(Collider sourceCollider, float maxDistance)
+    public static bool TryGetClosestWithinSurfaceDistance(
+        Collider sourceCollider,
+        float maxDistance,
+        out Vector3 direction)
     {
+        direction = Vector3.forward;
         if (sourceCollider == null)
         {
             return false;
@@ -55,6 +59,8 @@ public class EnemyController : MonoBehaviour
 
         Vector3 sourceCenter = sourceCollider.bounds.center;
         float maxDistanceSquared = maxDistance * maxDistance;
+        float closestDistanceSquared = maxDistanceSquared;
+        bool enemyFound = false;
 
         for (int i = activeEnemies.Count - 1; i >= 0; i--)
         {
@@ -71,18 +77,26 @@ public class EnemyController : MonoBehaviour
 
             Vector3 enemySurface = enemy.unitCollider.ClosestPoint(sourceCenter);
             Vector3 playerSurface = sourceCollider.ClosestPoint(enemySurface);
-            if ((enemySurface - playerSurface).sqrMagnitude <= maxDistanceSquared)
+            float surfaceDistanceSquared = (enemySurface - playerSurface).sqrMagnitude;
+            if (surfaceDistanceSquared <= closestDistanceSquared)
             {
-                return true;
+                Vector3 enemyDirection = enemy.transform.position - sourceCollider.transform.position;
+                enemyDirection.y = 0f;
+                if (enemyDirection.sqrMagnitude > 0.0001f)
+                {
+                    direction = enemyDirection.normalized;
+                }
+                closestDistanceSquared = surfaceDistanceSquared;
+                enemyFound = true;
             }
         }
 
-        return false;
+        return enemyFound;
     }
 
     void Start()
     {
-        HistoricalUnitVisual.Attach(gameObject, HistoricalUnitVisual.Faction.Barbarian);
+        HistoricalUnitVisual.Attach(gameObject, HistoricalUnitVisual.Faction.Greek);
         health = maxHealth;
         target = GameObject.FindGameObjectWithTag("PlayerCastle").transform;
         target.position -= new Vector3(0, target.position.y, 0);
