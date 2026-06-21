@@ -52,6 +52,7 @@ public sealed class HistoricalUnitVisual : MonoBehaviour
     private Vector3 combatDirection;
     private Vector3 romanShieldDirection;
     private Vector3 greekSpearCombatDirection;
+    private Vector3 greekShieldDirection;
     private float combatPoseWeight;
     private float greekShieldGuardWeight;
     private float greekSpearAttackWeight;
@@ -103,6 +104,7 @@ public sealed class HistoricalUnitVisual : MonoBehaviour
     private const float RomanShieldTrackingHalfAngle = 60f;
     private const float GreekShieldGuardDistance = 3f;
     private const float GreekShieldGuardBlendSpeed = 6f;
+    private const float GreekShieldTrackingHalfAngle = 60f;
     private const float GreekSpearLoweringBlendSpeed = 3.5f;
     private const float RomanAttackCycleDuration = 2.6f;
     private static readonly Vector3 GreekSpearLocalPosition = new Vector3(0.435f, 1.323f, -1.184f);
@@ -596,13 +598,26 @@ public sealed class HistoricalUnitVisual : MonoBehaviour
             romanIsClose ? 1f : 0f,
             Time.deltaTime * GreekShieldGuardBlendSpeed);
 
-        Vector3 shieldDirection = romanIsClose ? nearestRomanDirection : runDirection;
-        shieldDirection.y = 0f;
-        if (shieldDirection.sqrMagnitude <= 0.0001f)
+        if (greekShieldDirection.sqrMagnitude <= 0.0001f)
         {
-            shieldDirection = runDirection;
+            greekShieldDirection = runDirection;
         }
-        shieldDirection.Normalize();
+
+        nearestRomanDirection.y = 0f;
+        if (nearestRomanDirection.sqrMagnitude > 0.0001f)
+        {
+            nearestRomanDirection.Normalize();
+        }
+        float shieldTargetAngle = Vector3.SignedAngle(
+            runDirection,
+            nearestRomanDirection,
+            importedGreekModelRoot.up);
+        if (romanIsClose && Mathf.Abs(shieldTargetAngle) <= GreekShieldTrackingHalfAngle)
+        {
+            greekShieldDirection = nearestRomanDirection;
+        }
+        greekShieldDirection.y = 0f;
+        greekShieldDirection.Normalize();
 
         if (importedGreekShield != null
             && importedGreekShieldHand != null
@@ -620,7 +635,7 @@ public sealed class HistoricalUnitVisual : MonoBehaviour
                 importedGreekModelRoot.up) * runningRotation;
             Quaternion enemyYaw = Quaternion.FromToRotation(
                 runDirection,
-                shieldDirection);
+                greekShieldDirection);
             Quaternion enemyRotation = enemyYaw * forwardRotation;
 
             importedGreekShield.position = fixedWristPosition;

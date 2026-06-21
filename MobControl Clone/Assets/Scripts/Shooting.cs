@@ -18,6 +18,7 @@ public class Shooting : MonoBehaviour
 
     void Start()
     {
+        RomanSiegeTowerVisual.Attach(gameObject);
         fireTimer = 0;
     }
 
